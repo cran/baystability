@@ -22,11 +22,9 @@
 #'  \emph{Journal of Agricultural, Biological, and Environmental Statistics},
 #'   17, 15–37.  (\href{https://link.springer.com/article/10.1007/s13253-011-0063-9}{doi:10.1007/s13253-011-0063-9})
 #'
-#' @import tidyverse
-#' @import tidyr
-#' @import rlang
-#' @importFrom magrittr %>%
-#' @importFrom stats var
+#' @import dplyr ggplot2 lme4 rlang rstiefel tibble tidyr scales
+#' @importFrom MASS Null mvrnorm
+#' @importFrom stats rexp rgamma rnorm runif sigma var
 #'
 #' @export
 #'

@@ -28,20 +28,16 @@
 #'  \emph{Journal of Agricultural, Biological, and Environmental Statistics},
 #'   17, 15–37.  (\href{https://link.springer.com/article/10.1007/s13253-011-0063-9}{doi:10.1007/s13253-011-0063-9})
 #'
-#' @import tidyverse
-#' @import MASS
-#' @import rstiefel
-#' @import tidyr
-#' @import lme4
-#' @import tibble
-#' @import rlang
-#' @importFrom magrittr %>%
-#' @importFrom stats rexp rgamma rnorm runif
+#' @import dplyr ggplot2 lme4 rlang rstiefel tibble tidyr scales
+#' @importFrom MASS Null mvrnorm
+#' @importFrom stats rexp rgamma rnorm runif setNames sigma var
 #'
 #' @export
 #'
 #' @examples
-#'
+#' \dontrun{
+#' library(baystability)
+#' library(dplyr)
 #' data(cultivo2008)
 #' fm1 <-
 #'    ge_ammi(
@@ -83,9 +79,12 @@
 #' alphasa  <- fm2$alphas
 #' gammasa  <- fm2$gammas
 #'
-#' alphas1  <- tibble::as_tibble(fm2$alphas)
-#' gammas1  <- tibble::as_tibble(fm2$gammas)
-#'
+#' alphas1  <-
+#'            tibble::as_tibble(fm2$alphas, .name_repair = "unique") %>%
+#'            setNames(paste0("V", 1:ncol(.)))
+#' gammas1  <-
+#'            tibble::as_tibble(fm2$gammas, .name_repair = "unique") %>%
+#'            setNames(paste0("V", 1:ncol(.)))
 #'
 #'
 #' # Biplots OLS
@@ -149,7 +148,7 @@
 #'       theme(plot.title = element_text(hjust = 0.5))
 #'       print(BiplotOLS3)
 #'
-#'
+#' data(cultivo2009)
 #' fm3 <-
 #'   bayes_ammi(
 #'     .data = cultivo2009
@@ -160,9 +159,9 @@
 #'     , .nIter = 200
 #'   )
 #'
+#'  Mean_Alphas <- fm3$Mean_Alphas %>% setNames(paste0("V", 1:ncol(.)))
+#'  Mean_Gammas <- fm3$Mean_Gammas %>% setNames(paste0("V", 1:ncol(.)))
 #'
-#' Mean_Alphas <- tibble::as_tibble(matrix(colMeans(fm3$alphas1), ncol = 11))
-#' Mean_Gammas <- tibble::as_tibble(matrix(colMeans(fm3$gammas1), ncol = 11))
 #'
 #' # Biplots Bayesian
 #' BiplotBayes1 <-
@@ -232,6 +231,142 @@
 #'   theme(plot.title = element_text(hjust = 0.5))
 #'
 #' print(BiplotBayes3)
+#'
+#' Plot1Mu <-
+#'   ggplot(data = fm3$mu1, mapping = aes(x = 1:nrow(fm3$mu1), y = mu)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(mu), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Mu)
+#'
+#' Plot2Mu <-
+#'   ggplot(data = fm3$mu1, mapping = aes(mu)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(mu)) +
+#'   theme_bw()
+#' print(Plot2Mu)
+#'
+#'
+#' Plot1Sigma2 <-
+#'   ggplot(data = fm3$tau1, mapping = aes(x = 1:nrow(fm3$tau1), y = tau)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(sigma^2), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Sigma2)
+#'
+#'
+#' Plot2Sigma2 <-
+#'   ggplot(data = fm3$tau1, mapping = aes(tau)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(sigma^2)) +
+#'   theme_bw()
+#' print(Plot2Sigma2)
+#'
+#'
+#' # Plot of Alphas
+#' Plot1Alpha1 <-
+#'   ggplot(data = fm3$tao1, mapping = aes(x = 1:nrow(fm3$tao1), y = tao1)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(alpha[1]), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Alpha1)
+#'
+#' Plot2Alpha1 <-
+#'   ggplot(data = fm3$tao1, mapping = aes(tao1)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(alpha[1])) +
+#'   theme_bw()
+#' print(Plot2Alpha1)
+#'
+#' Plot1Alpha2 <-
+#'   ggplot(data = fm3$tao1, mapping = aes(x = 1:nrow(fm3$tao1), y = tao2)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(alpha[2]), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Alpha2)
+#'
+#' Plot2Alpha2 <-
+#'   ggplot(data = fm3$tao1, mapping = aes(tao2)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(alpha[2])) +
+#'   theme_bw()
+#' print(Plot2Alpha2)
+#'
+#' # Plot of Betas
+#' Plot1Beta1 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(x = 1:nrow(fm3$delta1), y = delta1)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(beta[1]), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Beta1)
+#'
+#' Plot2Beta1 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(delta1)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(beta[1])) +
+#'   theme_bw()
+#' print(Plot2Beta1)
+#'
+#'
+#' Plot1Beta2 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(x = 1:nrow(fm3$delta1), y = delta2)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(beta[2]), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Beta2)
+#'
+#' Plot2Beta2 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(delta2)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(beta[2])) +
+#'   theme_bw()
+#' print(Plot2Beta2)
+#'
+#'
+#' Plot1Beta3 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(x = 1:nrow(fm3$delta1), y = delta3)) +
+#'   geom_line(color = "blue") +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = expression(beta[3]), x = "Iterations") +
+#'   theme_bw()
+#' print(Plot1Beta3)
+#'
+#' Plot2Beta3 <-
+#'   ggplot(data = fm3$delta1, mapping = aes(delta3)) +
+#'   geom_histogram() +
+#'   scale_x_continuous(labels = scales::comma) +
+#'   scale_y_continuous(labels = scales::comma) +
+#'   labs(y = "Frequency", x = expression(beta[3])) +
+#'   theme_bw()
+#' print(Plot2Beta3)
+#' }
+#'
+
 if(getRversion() >= "2.15.1"){
   utils::globalVariables(
     c(
@@ -402,13 +537,13 @@ fm1   <-
     times   <- times + 1
     }
 
-    mu1      <-  tibble::as_tibble(mu1)
-    tau1     <-  tibble::as_tibble(tau1)
-    tao1     <-  tibble::as_tibble(t(tao1))
-    delta1   <-  tibble::as_tibble(t(delta1))
-    lambdas1 <-  tibble::as_tibble(t(lambdas1))
-    alphas1  <-  tibble::as_tibble(alphas1)
-    gammas1  <-  tibble::as_tibble(gammas1)
+    mu1      <-  tibble::as_tibble(mu1, .name_repair = "unique")
+    tau1     <-  tibble::as_tibble(tau1, .name_repair = "unique")
+    tao1     <-  tibble::as_tibble(t(tao1), .name_repair = "unique")
+    delta1   <-  tibble::as_tibble(t(delta1), .name_repair = "unique")
+    lambdas1 <-  tibble::as_tibble(t(lambdas1), .name_repair = "unique")
+    alphas1  <-  tibble::as_tibble(alphas1, .name_repair = "unique")
+    gammas1  <-  tibble::as_tibble(gammas1, .name_repair = "unique")
 
      colnames(mu1)      <- c("mu")
      colnames(tau1)     <- c("tau")
@@ -418,15 +553,20 @@ fm1   <-
      colnames(alphas1)  <- paste0("alphas", 1:(g*k))
      colnames(gammas1)  <- paste0("gammas", 1:(e*k))
 
+     Mean_Alphas <- tibble::as_tibble(matrix(colMeans(alphas1), ncol = k), .name_repair = "unique")
+     Mean_Gammas <- tibble::as_tibble(matrix(colMeans(gammas1), ncol = k), .name_repair = "unique")
+
 
 
     return(list(
-      mu1      = mu1
-    , tau1     = tau1
-    , tao1     = tao1
-    , delta1   = delta1
-    , lambdas1 = lambdas1
-    , alphas1  = alphas1
-    , gammas1  = gammas1
+      mu1         = mu1
+    , tau1        = tau1
+    , tao1        = tao1
+    , delta1      = delta1
+    , lambdas1    = lambdas1
+    , alphas1     = alphas1
+    , gammas1     = gammas1
+    , Mean_Alphas = Mean_Alphas
+    , Mean_Gammas = Mean_Gammas
     ))
   }

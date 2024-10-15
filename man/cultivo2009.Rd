@@ -4,7 +4,9 @@
 \name{cultivo2009}
 \alias{cultivo2009}
 \title{Data for Genotypes by Environment Interaction (GEI)}
-\format{A \code{data.frame} 1320 obs. of  6 variables.}
+\format{
+A \code{data.frame} 1320 obs. of  6 variables.
+}
 \usage{
 data(cultivo2009)
 }
