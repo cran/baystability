@@ -1,89 +1,37 @@
-#' @name    g_eff
-#' @aliases g_eff
-#' @title   Genotype Effects
-#' @description Calcuates Genotype Effects
+#' Genotype effects
 #'
-#' @param .data  data.frame
-#' @param .y     Response Variable
-#' @param .gen   Genotypes Factor
-#' @param .env   Environment Factor
+#' @description
+#' \code{bys_ls_gen_effects()} computes the genotype main effects, the deviations of the genotype means from the grand mean.
 #'
-#' @return Genotype Effects
+#' @details
+#' \deqn{\hat{\tau}_i = \bar{y}_{i\cdot} - \bar{y}, \qquad \bar{y}_{i\cdot} = \frac{1}{E}\sum_j \bar{y}_{ij},}{tau_i
+#'   = y_i. - ybar, y_i. = sum_j y_ij / E,}
+#' the least-squares estimates of the AMMI model (equal to the deviations of the plot means when the data are
+#' balanced).
 #'
-#' @author
-#' \enumerate{
-#'     \item Muhammad Yaseen (\email{myaseen208@@gmail.com})
-#'    }
-#'
+#' @inheritParams bys_ls_means
+#' @return A \eqn{G \times 1}{G x 1} matrix with column \code{GEffs} (row names: genotypes).
 #' @references
-#'  Perez-Elizalde, S., Jarquin, D., and Crossa, J. (2011)
-#'  A General Bayesian Estimation Method of Linear–Bilinear Models
-#'  Applied to Plant Breeding Trials With Genotype × Environment Interaction.
-#'  \emph{Journal of Agricultural, Biological, and Environmental Statistics},
-#'   17, 15–37.  (\href{https://link.springer.com/article/10.1007/s13253-011-0063-9}{doi:10.1007/s13253-011-0063-9})
-#'
-#' @import dplyr ggplot2 lme4 rlang rstiefel tibble tidyr scales
-#' @importFrom MASS Null mvrnorm
-#' @importFrom stats rexp rgamma rnorm runif sigma var
-#'
-#' @export
-#'
+#' Crossa, J., Perez-Elizalde, S., Jarquin, D., Cotes, J. M., Viele, K., Liu, G. and Cornelius, P. L. (2011).
+#' Bayesian estimation of the additive main effects and multiplicative interaction model. \emph{Crop Science},
+#' \strong{51}(4), 1458--1469. \doi{10.2135/cropsci2010.06.0343}
+#' @author Muhammad Yaseen (\email{myaseen208@@gmail.com})
+#' @seealso \code{\link{bys_ls_env_effects}}, \code{\link{bys_ls_ge_effects}}
 #' @examples
-#'
-#' data(cultivo2008)
-#' g_eff(
-#'     .data  = cultivo2008
-#'    , .y    = y
-#'    , .gen  = entry
-#'    , .env  = site
-#'    )
-#'
-#'
-
-
-if(getRversion() >= "2.15.1"){
-  utils::globalVariables(
-    c(
-      "Gen"
-      , "Y"
-      , "GMean"
-      , "."
-      , "GEffs"
-    )
-  )
-}
-g_eff <- function(.data, .y, .gen, .env) {
-  UseMethod("g_eff")
-}
-
-
+#' data(cultivo2009)
+#' bys_ls_gen_effects(
+#'     .data = cultivo2009
+#'   , .y    = y
+#'   , .gen  = entry
+#'   , .env  = site
+#'   )
 #' @export
-#' @rdname g_eff
+bys_ls_gen_effects <- function(.data, .y, .gen, .env) UseMethod("bys_ls_gen_effects")
 
-g_eff.default <-
-  function(.data, .y, .gen, .env){
-
-    .y    <- deparse(substitute(.y))
-    .gen  <- deparse(substitute(.gen))
-    .env  <- deparse(substitute(.env))
-
-    df1 <- tibble::as_tibble(data.frame(
-      Env = factor(.data[[.env]])
-      , Gen = factor(.data[[.gen]])
-      , Y   = .data[[.y]]
-    ))
-
-    g_effects <-
-      df1 %>%
-        dplyr::group_by(Gen) %>%
-        dplyr::summarise(GMean = mean(Y)) %>%
-        dplyr::ungroup() %>%
-        dplyr::mutate(GEffs = GMean - mean(GMean)) %>%
-      #  magrittr::set_rownames(.$Gen) %>%
-        dplyr::ungroup() %>%
-        dplyr::select(GEffs) %>%
-        as.matrix()
-
-    return(g_effects)
+#' @rdname bys_ls_gen_effects
+#' @export
+bys_ls_gen_effects.default <- function(.data, .y, .gen, .env) {
+  cd <- .bys_prep("bys_ls_gen_effects", .data, substitute(.y), substitute(.gen), substitute(.env), NULL, parent.frame(),
+                  need_rep = FALSE)
+  matrix(rowMeans(cd$Y) - mean(cd$Y), ncol = 1L, dimnames = list(cd$G, "GEffs"))
 }
-

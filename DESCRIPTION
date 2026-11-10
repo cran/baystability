@@ -2,29 +2,56 @@ Package: baystability
 Type: Package
 Title: Bayesian Stability Analysis of Genotype by Environment
         Interaction (GEI)
-Version: 0.2.0
+Version: 1.0.0
+Date: 2026-11-04
 Authors@R: c(
-              person(c("Muhammad", "Yaseen"),  email = "myaseen208@gmail.com", role = c("aut", "cre"))
-            , person(c("Diego", "Jarquin"),  email = "diego.jarquin@gmail.com", role = c("aut", "ctb"))
-            , person(c("Sergio", "Perez-Elizalde"),  email = "sergiop@colpos.mx", role = c("aut", "ctb"))
-            , person(c("Juan", "Burgueño"),  email = "j.crossa@cgiar.org", role = c("aut", "ctb"))
-            , person(c("Jose", "Crossa"),  email = "j.crossa@cgiar.org", role = c("aut", "ctb"))
-            )
-Maintainer: Muhammad Yaseen <myaseen208@gmail.com>
-Description: Performs general Bayesian estimation method of linear–bilinear models for genotype × environment interaction. The method is explained in Perez-Elizalde, S., Jarquin, D., and Crossa, J. (2011) (<doi:10.1007/s13253-011-0063-9>).
-Depends: R (>= 3.1)
-Imports: dplyr, ggplot2, lme4, MASS, rstiefel, rlang, scales, stats,
-        tibble, tidyr
+      person("Muhammad", "Yaseen", email = "myaseen208@gmail.com", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0002-5923-1714"))
+    , person("Diego", "Jarquin", email = "diego.jarquin@gmail.com", role = c("aut", "ctb"))
+    , person("Sergio", "Perez-Elizalde", email = "sergiop@colpos.mx", role = c("aut", "ctb"))
+    , person("Juan", "Burgueno", role = c("aut", "ctb"))
+    , person("Jose", "Crossa", email = "j.crossa@cgiar.org", role = c("aut", "ctb"))
+    )
+Description: Performs the general Bayesian estimation method of
+    linear-bilinear models for genotype x environment interaction of
+    Perez-Elizalde, Jarquin and Crossa (2012) <doi:10.1007/s13253-011-0063-9>:
+    the additive main effects and multiplicative interaction (AMMI) model
+    and the sites regression (SREG, GGE) model, with the data of an earlier
+    trial as the prior (conjugate normal and von Mises-Fisher priors weighted
+    by its replicates) or with vague priors; a compiled Gibbs sampler;
+    posterior summaries with highest posterior density intervals;
+    convergence diagnostics; biplots with highest posterior density regions;
+    DIC and WAIC; a plain-language interpretation of every result; and a
+    built-in 'shiny' application. For
+    Bayesian stability analysis in general (regression and variance models,
+    stability indices, probabilities of superior performance), see the
+    package 'bayesstability'.
 License: GPL-2
+URL: https://myaseen208.com/baystability/,
+        https://github.com/myaseen208/baystability
+BugReports: https://github.com/myaseen208/baystability/issues
 Encoding: UTF-8
+Language: en-US
 LazyData: true
-RoxygenNote: 7.3.2
-NeedsCompilation: no
-Packaged: 2024-10-15 02:30:56 UTC; myaseen208
-Author: Muhammad Yaseen [aut, cre],
+Depends: R (>= 4.2)
+Imports: coda, collapse, data.table, ggplot2, ggrepel, grDevices, MASS,
+        Rcpp, scales, stats, utils
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: bayesplot, bslib, DT, flextable, knitr, lme4, loo, magick,
+        officer, pkgload, posterior, quarto, ragg, R.rsp, shiny,
+        svglite, testthat (>= 3.0.0), withr
+VignetteBuilder: quarto, R.rsp
+Config/testthat/edition: 3
+Config/skill/prefix: bys
+RoxygenNote: 7.3.1
+NeedsCompilation: yes
+Packaged: 2026-11-10 04:14:04 UTC; myaseen208
+Author: Muhammad Yaseen [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-5923-1714>),
   Diego Jarquin [aut, ctb],
   Sergio Perez-Elizalde [aut, ctb],
-  Juan Burgueño [aut, ctb],
+  Juan Burgueno [aut, ctb],
   Jose Crossa [aut, ctb]
+Maintainer: Muhammad Yaseen <myaseen208@gmail.com>
 Repository: CRAN
-Date/Publication: 2024-10-15 04:40:03 UTC
+Date/Publication: 2026-11-10 09:40:14 UTC

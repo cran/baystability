@@ -1,0 +1,267 @@
+---
+title: "The SREG (GGE) model, the weight of the earlier trial and the number of terms"
+author: "Muhammad Yaseen"
+date: last-modified
+format:
+  html:
+    self-contained: true
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    highlight-style: pygments
+    code-tools: true
+    html-math-method: mathjax
+vignette: >
+  %\VignetteIndexEntry{The SREG (GGE) model, the weight of the earlier trial and the number of terms}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+{{< include _baystability-macros.txt >}}
+
+```{r setup, include = FALSE}
+# HTML figures are drawn as PNG and kept as WebP: lossless (the same pixels in about half the space of PNG), or
+# lossy at quality 90 when that is less than half the size, as for traces and densities of thousands of draws. The
+# PDF figures stay vector graphics. Any failure of magick (not installed, no WebP, or a broken installation whose
+# system libraries are missing) keeps the PNG
+webp <- function(path) {
+  if (knitr::is_latex_output() || !grepl(pattern = "[.]png$", x = path)) return(path)
+  tryCatch(
+      {
+        if (!requireNamespace("magick", quietly = TRUE) || !isTRUE(magick::magick_config()$webp)) return(path)
+        img <- magick::image_read(path)
+        out <- sub(pattern = "[.]png$", replacement = ".webp", x = path)
+        tmp <- tempfile(fileext = ".webp")
+        magick::image_write(
+            image   = img
+          , path    = out
+          , format  = "webp"
+          , quality = 100
+          , defines = c(`webp:lossless` = "true")
+          )
+        magick::image_write(image = img, path = tmp, format = "webp", quality = 90)
+        if (file.size(tmp) < file.size(out) / 2) file.copy(from = tmp, to = out, overwrite = TRUE)
+        unlink(c(path, tmp))
+        out
+      }
+    , error = function(e) path
+    )
+}
+knitr::opts_chunk$set(collapse = FALSE, comment = "", fig.width = 7, fig.height = 5,
+                      dev = if (knitr::is_latex_output()) "cairo_pdf" else "ragg_png", dpi = 96,
+                      fig.process = webp)
+if (requireNamespace("baystability", quietly = TRUE)) library(baystability) else
+  pkgload::load_all(export_all = FALSE, helpers = FALSE, quiet = TRUE)
+```
+
+# Abstract
+
+The sites regression (SREG) model puts the genotype main effects into the bilinear terms, so its biplot shows which
+genotypes do best where. This vignette fits it with the first year as prior, then shows how the weight of the earlier
+trial changes the posterior and how WAIC chooses the number of terms.
+
+# The SREG model with the first year as prior
+
+```{r sreg}
+fs <-
+  bayes_ammi(
+      .data       = cultivo2009
+    , .y          = y
+    , .gen        = entry
+    , .env        = site
+    , .rep        = rep
+    , .nIter      = 3000
+    , .prior_data = cultivo2008
+    , .n0         = NULL
+    , .model      = "SREG"
+    , .k          = 2
+    , .burnin     = 1000
+    , .thin       = 1
+    , .chains     = 2
+    , .priors     = bys_priors(
+          mu_mean     = 0
+        , mu_var      = 1e+8
+        , tau_mean    = 0
+        , tau_var     = 1e+8
+        , delta_mean  = 0
+        , delta_var   = 1e+8
+        , lambda_mean = 0
+        , lambda_var  = 1e+8
+        , nu          = 1
+        , s2          = NULL
+        )
+    , .level      = 0.95
+    , .seed       = 2012
+    , .align      = TRUE
+    , .waic       = TRUE
+    )
+fs
+```
+
+```{r sreg-bip, fig.width = 9}
+bs <-
+  bayes_gge_biplot(
+      fit           = fs
+    , burnin        = 0
+    , thin          = 1
+    , pb            = 0.05
+    , plot_stable   = FALSE
+    , plot_unstable = TRUE
+    , ncolors       = 5
+    , .which        = "both"
+    , .grid         = 100
+    )
+bs$biplot
+```
+
+On an SREG biplot the first axis reflects mostly the genotype means, so genotypes far out on it are above or below
+average rather than interacting.
+
+# The weight of the earlier trial
+
+`.n0` sets how many observations per cell the earlier trial counts for. By default it is its number of replicates
+(3).
+
+```{r n0}
+w <- c(0.5, 3, 12)
+res <-
+  data.table::rbindlist(
+      l = lapply(
+          X   = w
+        , FUN = function(n0) {
+            f <-
+              bayes_ammi(
+                  .data       = cultivo2009
+                , .y          = y
+                , .gen        = entry
+                , .env        = site
+                , .rep        = rep
+                , .nIter      = 1500
+                , .prior_data = cultivo2008
+                , .n0         = n0
+                , .model      = "AMMI"
+                , .k          = 2
+                , .burnin     = 500
+                , .thin       = 1
+                , .chains     = 1
+                , .priors     = bys_priors(
+                      mu_mean     = 0
+                    , mu_var      = 1e+8
+                    , tau_mean    = 0
+                    , tau_var     = 1e+8
+                    , delta_mean  = 0
+                    , delta_var   = 1e+8
+                    , lambda_mean = 0
+                    , lambda_var  = 1e+8
+                    , nu          = 1
+                    , s2          = NULL
+                    )
+                , .level      = 0.95
+                , .seed       = 4
+                , .align      = TRUE
+                , .waic       = TRUE
+                )
+            data.table::data.table(
+                n0      = n0
+              , mu      = f$summary[parameter == "mu", mean]
+              , alpha1  = f$summary[block == "tau", mean][1]
+              , lambda1 = f$summary[parameter == "lambda[1]", mean]
+              )
+          }
+        )
+    )
+res
+```
+
+```{r n0f, include = FALSE}
+m08 <-
+  bys_ls_means(
+      .data = cultivo2008
+    , .y    = y
+    , .gen  = entry
+    , .env  = site
+    )$grand_mean
+m09 <-
+  bys_ls_means(
+      .data = cultivo2009
+    , .y    = y
+    , .gen  = entry
+    , .env  = site
+    )$grand_mean
+```
+
+As $n_0$ grows the posterior moves from the second year (grand mean `r round(m09)`) towards the first
+(`r round(m08)`). With $n_0 = 3$ it sits halfway. A small $n_0$ is the choice when the earlier trial was grown under
+different conditions.
+
+# How many terms?
+
+WAIC compares fits with different numbers of terms (Watanabe 2010; Vehtari et al. 2017):
+
+```{r terms}
+fits <-
+  lapply(
+      X   = c(1, 2, 3, 5)
+    , FUN = function(K) {
+        bayes_ammi(
+            .data       = cultivo2009
+          , .y          = y
+          , .gen        = entry
+          , .env        = site
+          , .rep        = rep
+          , .nIter      = 1500
+          , .prior_data = cultivo2008
+          , .n0         = NULL
+          , .model      = "AMMI"
+          , .k          = K
+          , .burnin     = 500
+          , .thin       = 1
+          , .chains     = 1
+          , .priors     = bys_priors(
+                mu_mean     = 0
+              , mu_var      = 1e+8
+              , tau_mean    = 0
+              , tau_var     = 1e+8
+              , delta_mean  = 0
+              , delta_var   = 1e+8
+              , lambda_mean = 0
+              , lambda_var  = 1e+8
+              , nu          = 1
+              , s2          = NULL
+              )
+          , .level      = 0.95
+          , .seed       = 5
+          , .align      = TRUE
+          , .waic       = TRUE
+          )
+      }
+    )
+names(fits) <- paste0("K", c(1, 2, 3, 5))
+cp <- do.call(what = bys_compare, args = fits)
+cp
+```
+
+```{r termsf, include = FALSE}
+t <- cp$table
+close <- t$model[t$dWAIC <= 2 * t$dWAIC_se]
+```
+
+WAIC prefers `r t$model[1]`; `r paste(setdiff(close, t$model[1]), collapse = " and ")` lie within two standard errors
+of the difference (`dWAIC_se`), so the data do not separate them. With the first year as a strong prior, the
+singular values of every term are pulled towards that year's, and few terms suffice for prediction. The paper chose
+three terms with the Bayes factor, which compares the marginal likelihoods of the models rather than their
+predictive accuracy.
+
+# References
+
+Perez-Elizalde, S., Jarquin, D. and Crossa, J. (2012). A general Bayesian estimation method of linear-bilinear models applied to plant breeding trials with genotype x environment interaction. *Journal of Agricultural, Biological, and Environmental Statistics*, 17, 15--37. doi:10.1007/s13253-011-0063-9
+
+Yan, W., Hunt, L. A., Sheng, Q. and Szlavnics, Z. (2000). Cultivar evaluation and mega-environment investigation based on the GGE biplot. *Crop Science*, 40(3), 597--605.
+
+Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and widely applicable information criterion in singular learning theory. *Journal of Machine Learning Research*, 11, 3571--3594.
+
+Vehtari, A., Gelman, A. and Gabry, J. (2017). Practical Bayesian model evaluation using leave-one-out cross-validation and WAIC. *Statistics and Computing*, 27(5), 1413--1432.

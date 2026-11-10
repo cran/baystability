@@ -1,93 +1,43 @@
-#' @name    ge_mean
-#' @aliases ge_mean
-#' @title   Genotype by Environment Interaction Means
-#' @description Calcuates Genotype by Environment Interaction Means
+#' Genotype-by-environment means
 #'
-#' @param .data  data.frame
-#' @param .y     Response Variable
-#' @param .gen   Genotypes Factor
-#' @param .env   Environment Factor
+#' @description
+#' \code{bys_ls_means()} computes the table of genotype-by-environment cell means and the grand mean, the data of the
+#' AMMI model.
 #'
-#' @return Genotype by Environment Interaction Means
+#' @details
+#' With \eqn{y_{ijl}}{y_ijl} the response of genotype \eqn{i}{i} in replicate \eqn{l}{l} of environment \eqn{j}{j}
+#' and \eqn{n_{ij}}{n_ij} the number of replicates of the cell,
+#' \deqn{\bar{y}_{ij} = \frac{1}{n_{ij}}\sum_l y_{ijl}, \qquad \bar{y} = \frac{1}{GE}\sum_{ij}\bar{y}_{ij}.}{y_ij =
+#'   sum_l y_ijl / n_ij; ybar = sum_ij y_ij / (GE).}
+#' Genotypes and environments are in the order of their factor levels (sorted values when the columns are not
+#' factors).
 #'
-#' @author
-#' \enumerate{
-#'     \item Muhammad Yaseen (\email{myaseen208@@gmail.com})
-#'    }
-#'
+#' @param .data a data frame with one row per plot.
+#' @param .y,.gen,.env the columns of the response, genotypes and environments: bare names, strings or vectors.
+#' @return A list (class \code{c("bys_ge_mean", "bys_result", "list")}) with \code{ge_means}, the \eqn{G \times
+#'   E}{G x E} matrix of means (row and column names: genotypes and environments), and \code{grand_mean}.
 #' @references
-#'  Perez-Elizalde, S., Jarquin, D., and Crossa, J. (2011)
-#'  A General Bayesian Estimation Method of Linear–Bilinear Models
-#'  Applied to Plant Breeding Trials With Genotype × Environment Interaction.
-#'  \emph{Journal of Agricultural, Biological, and Environmental Statistics},
-#'   17, 15–37.  (\href{https://link.springer.com/article/10.1007/s13253-011-0063-9}{doi:10.1007/s13253-011-0063-9})
-#'
-#' @import dplyr ggplot2 lme4 rlang rstiefel tibble tidyr scales
-#' @importFrom MASS Null mvrnorm
-#' @importFrom stats rexp rgamma rnorm runif sigma var
-#'
-#' @export
-#'
+#' Crossa, J., Perez-Elizalde, S., Jarquin, D., Cotes, J. M., Viele, K., Liu, G. and Cornelius, P. L. (2011).
+#' Bayesian estimation of the additive main effects and multiplicative interaction model. \emph{Crop Science},
+#' \strong{51}(4), 1458--1469. \doi{10.2135/cropsci2010.06.0343}
+#' @author Muhammad Yaseen (\email{myaseen208@@gmail.com})
+#' @seealso \code{\link{bys_ls_var}}, \code{\link{bys_ls_ge_effects}}, \code{\link{bys_ls_ammi}}
 #' @examples
-#'
-#' data(cultivo2008)
-#' ge_mean(
-#'     .data  = cultivo2008
-#'    , .y    = y
-#'    , .gen  = entry
-#'    , .env  = site
-#'    )
-#'
-#'
-
-
-if(getRversion() >= "2.15.1"){
-  utils::globalVariables(
-    c(
-      "Gen"
-      , "Env"
-      , "Y"
-      , "GEMean"
-      , "."
-    )
-  )
-}
-
-ge_mean <- function(.data, .y, .gen, .env) {
-  UseMethod("ge_mean")
-}
-
-
+#' data(cultivo2009)
+#' bys_ls_means(
+#'     .data = cultivo2009
+#'   , .y    = y
+#'   , .gen  = entry
+#'   , .env  = site
+#'   )
 #' @export
-#' @rdname ge_mean
+bys_ls_means <- function(.data, .y, .gen, .env) UseMethod("bys_ls_means")
 
-ge_mean.default <-
-  function(.data, .y, .gen, .env){
-
-    .y    <- deparse(substitute(.y))
-    .gen  <- deparse(substitute(.gen))
-    .env  <- deparse(substitute(.env))
-
-    df1 <- tibble::as_tibble(data.frame(
-        Env = factor(.data[[.env]])
-      , Gen = factor(.data[[.gen]])
-      , Y   = .data[[.y]]
-    ))
-
-    ge_means <-
-      df1 %>%
-      dplyr::group_by(Gen, Env) %>%
-      dplyr::summarise(GEMean = mean(Y)) %>%
-      tidyr::spread(key = Env, value = GEMean) %>%
-    #  magrittr::set_rownames(.$Gen) %>%
-      dplyr::ungroup() %>%
-      dplyr::select(- Gen) %>%
-      as.matrix()
-
-    grand_mean <- mean(ge_means)
-
-    return(list(
-        ge_means   = ge_means
-      , grand_mean = grand_mean
-      ))
+#' @rdname bys_ls_means
+#' @export
+bys_ls_means.default <- function(.data, .y, .gen, .env) {
+  cd <- .bys_prep("bys_ls_means", .data, substitute(.y), substitute(.gen), substitute(.env), NULL, parent.frame(),
+                  need_rep = FALSE)
+  .bys_result(list(ge_means = cd$Y, grand_mean = mean(cd$Y)), "ge_mean", label = "Genotype-by-environment means",
+              call = match.call(), meta = list(response = cd$names[["y"]]))
 }

@@ -1,0 +1,155 @@
+---
+title: "Model, priors from an earlier trial and the Gibbs sampler"
+author: "Muhammad Yaseen"
+date: last-modified
+format:
+  html:
+    self-contained: true
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    highlight-style: pygments
+    code-tools: true
+    html-math-method: mathjax
+vignette: >
+  %\VignetteIndexEntry{Model, priors from an earlier trial and the Gibbs sampler}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+{{< include _baystability-macros.txt >}}
+
+```{r setup, include = FALSE}
+# HTML figures are drawn as PNG and kept as WebP: lossless (the same pixels in about half the space of PNG), or
+# lossy at quality 90 when that is less than half the size, as for traces and densities of thousands of draws. The
+# PDF figures stay vector graphics. Any failure of magick (not installed, no WebP, or a broken installation whose
+# system libraries are missing) keeps the PNG
+webp <- function(path) {
+  if (knitr::is_latex_output() || !grepl(pattern = "[.]png$", x = path)) return(path)
+  tryCatch(
+      {
+        if (!requireNamespace("magick", quietly = TRUE) || !isTRUE(magick::magick_config()$webp)) return(path)
+        img <- magick::image_read(path)
+        out <- sub(pattern = "[.]png$", replacement = ".webp", x = path)
+        tmp <- tempfile(fileext = ".webp")
+        magick::image_write(
+            image   = img
+          , path    = out
+          , format  = "webp"
+          , quality = 100
+          , defines = c(`webp:lossless` = "true")
+          )
+        magick::image_write(image = img, path = tmp, format = "webp", quality = 90)
+        if (file.size(tmp) < file.size(out) / 2) file.copy(from = tmp, to = out, overwrite = TRUE)
+        unlink(c(path, tmp))
+        out
+      }
+    , error = function(e) path
+    )
+}
+knitr::opts_chunk$set(collapse = FALSE, comment = "", fig.width = 7, fig.height = 4.2,
+                      dev = if (knitr::is_latex_output()) "cairo_pdf" else "ragg_png", dpi = 96,
+                      fig.process = webp)
+if (requireNamespace("baystability", quietly = TRUE)) library(baystability) else
+  pkgload::load_all(export_all = FALSE, helpers = FALSE, quiet = TRUE)
+```
+
+# Abstract
+
+This vignette states the linear-bilinear models, the conjugate priors that carry an earlier trial into the analysis,
+the conditional posterior distributions and the sampler of `bayes_ammi()`, following Perez-Elizalde et al. (2012).
+One step is new: when all bilinear terms are fitted, the genotype scores can only move two columns at a time.
+
+# Models
+
+With $\mY$ the $G \times E$ table of cell means and $B$ replicates,
+$$\mY = \mu\vone_G\vone_E^\top + \vt\vone_E^\top + \vone_G\vd^\top + \mathbf{U}\mathbf{D}\mathbf{V}^\top + \bar{\mathbf{E}}$$
+(AMMI), with $\vone^\top\vt = \vone^\top\vd = 0$, $\mathbf{D} = \mathrm{diag}(\lambda_1 \ge \cdots \ge \lambda_K)$,
+$\mathbf{U}^\top\mathbf{U} = \mathbf{V}^\top\mathbf{V} = \mI$ and $\mathbf{U}^\top\vone = \mathbf{V}^\top\vone =
+\mathbf{0}$. Dropping $\vt$ and the constraint $\mathbf{V}^\top\vone = \mathbf{0}$ gives the sites regression model
+(SREG, GGE).
+
+# Priors from an earlier trial
+
+With $\mY_0$ the cell means of the earlier trial, $n_0$ its replicates, $\mu_0$, $\vt_0$, $\vd_0$ its effects and
+$\mathbf{U}_0\mathbf{D}_0\mathbf{V}_0^\top$ the singular value decomposition of its interaction, the priors are
+conjugate and scale with $\sigma^2$:
+$$\mu \sim N\left(\mu_0, \frac{\sigma^2}{n_0GE}\right), \quad \mK_G\vt \sim N\left(\mK_G\vt_0,
+\frac{\sigma^2}{n_0E}\mI\right), \quad \mK_E\vd \sim N\left(\mK_E\vd_0, \frac{\sigma^2}{n_0G}\mI\right),$$
+$$\lambda_k \sim N\left(\lambda_{0k}, \frac{\sigma^2}{n_0}\right) \textrm{ truncated to the order}, \quad
+p(\mathbf{U}) \propto \mathrm{etr}\left(\frac{n_0}{\sigma^2}\mY_0\mathbf{V}_0\mathbf{D}_0\mathbf{U}^\top\right), \quad
+p(\mathbf{V}) \propto \mathrm{etr}\left(\frac{n_0}{\sigma^2}\mY_0^\top\mathbf{U}_0\mathbf{D}_0\mathbf{V}^\top\right),$$
+and $aS^2_0/\sigma^2 \sim \chi^2_a$ with $a = n_0 - 1$ and $S^2_0$ the within-cell mean square of the earlier trial
+(paper, eq. 2.7-2.11). The prior counts as $n_0$ observations per cell: with $n_0 = B$ the earlier trial weighs as
+much as the new one.
+
+Without an earlier trial, `bys_priors()` gives vague, proper priors that do not depend on $\sigma^2$ (Crossa et al.
+2011).
+
+# Conditional distributions
+
+Write $n = BGE$. Each conditional mixes the prior and the data in proportion $n_0 : B$:
+$$\mu \mid \cdot \sim N\left(\frac{n\bar{y} + n_0GE\mu_0}{n + n_0GE}, \frac{\sigma^2}{n + n_0GE}\right), \qquad
+\lambda_k \mid \cdot \sim N\left(\frac{B\,\va_k^\top\mY\vg_k + n_0\lambda_{0k}}{B + n_0},
+\frac{\sigma^2}{B + n_0}\right)$$
+on $(\lambda_{k+1}, \lambda_{k-1})$, and the same for $\vt$ and $\vd$ (eq. 2.15). The score matrices have von
+Mises-Fisher conditionals (eq. 2.13-2.14),
+$$p(\mathbf{U} \mid \cdot) \propto \mathrm{etr}\left\{\frac{1}{\sigma^2}(B\mY\mathbf{V}\mathbf{D} +
+n_0\mY_0\mathbf{V}_0\mathbf{D}_0)\mathbf{U}^\top\right\},$$
+and $\sigma^2$ is scaled inverse chi-squared with $a + n$ degrees of freedom and scale
+$aS^2_0 + \mathrm{SSW} + B\sum_{ij}(\bar{y}_{ij} - \hat{y}_{ij})^2$. As in the paper, the dependence of the priors on
+$\sigma^2$ is not carried into its conditional: it would involve the normalising constants of the von Mises-Fisher
+priors.
+
+# Drawing the score matrices
+
+The conditional of one column $\va_k$ given the others is von Mises-Fisher on the unit sphere of the subspace
+orthogonal to $\vone$ and to the other columns (Hoff 2009), drawn by the algorithm of Wood (1994). That subspace has
+dimension $G - K$. When all terms are fitted with fewer genotypes than environments, $K = G - 1$ and the subspace has
+dimension one: each column is fixed by the others up to its sign, and a column-wise sampler never moves. This is what
+happens with the 12 genotypes and 11 terms of the maize trial.
+
+`bayes_ammi()` adds a move for every pair of columns. Given the other $K - 2$ columns, the pair $(\va_k, \va_l)$ lies
+in a plane with orthonormal basis $\mathbf{N}$:
+$$\va_k = \mathbf{N}(\cos\theta, \sin\theta)^\top, \qquad \va_l = \epsilon\,\mathbf{N}(-\sin\theta, \cos\theta)^\top,
+\qquad \epsilon = \pm 1.$$
+With von Mises-Fisher parameters $\mathbf{c}_k$ and $\mathbf{c}_l$, $\mathbf{a} = \mathbf{N}^\top\mathbf{c}_k$ and
+$\mathbf{b} = \mathbf{N}^\top\mathbf{c}_l$, the density is $\exp\{\kappa_\epsilon\cos(\theta - \phi_\epsilon)\}$ with
+$\kappa_\epsilon\cos\phi_\epsilon = a_1 + \epsilon b_2$ and $\kappa_\epsilon\sin\phi_\epsilon = a_2 - \epsilon b_1$. So
+$\epsilon$ is drawn with probability proportional to $I_0(\kappa_\epsilon)$, then $\theta$ from the von Mises
+distribution (Best and Fisher 1979). The move is an exact Gibbs step. It runs whenever a score matrix fills its
+constrained space, for the genotype scores ($K = G - 1$) or the environment scores ($K = E - 1$, or $K = E$ for SREG).
+
+```{r pair}
+set.seed(seed = 1)
+th <- replicate(n = 5000, expr = baystability:::.bys_rvonmises(m = 0.5, kap = 3))
+c(simulated = mean(cos(th - 0.5)), theory = besselI(x = 3, nu = 1) / besselI(x = 3, nu = 0))
+```
+
+# Signs and starting values
+
+$(\va_k, \vg_k)$ and $(-\va_k, -\vg_k)$ give the same model. Every draw keeps the orientation of the earlier trial's
+vectors (`.align = TRUE`), oriented themselves like the least-squares vectors of the trial. With an earlier trial the
+first chain starts at its least-squares fit, the others at dispersed values.
+
+# The sampler
+
+Every iteration draws $\mu$, $\vt$ and $\vd$; then, for $k = 1, \ldots, K$, $\lambda_k$, $\va_k$ and $\vg_k$; then
+the pair moves when needed; and finally $\sigma^2$. The sampler is compiled (C++) and takes its random numbers from
+R. A plain R version is kept in the package, and both give the same draws from the same seed (vignette 5).
+
+# References
+
+Perez-Elizalde, S., Jarquin, D. and Crossa, J. (2012). A general Bayesian estimation method of linear-bilinear models applied to plant breeding trials with genotype x environment interaction. *Journal of Agricultural, Biological, and Environmental Statistics*, 17, 15--37. doi:10.1007/s13253-011-0063-9
+
+Crossa, J., Perez-Elizalde, S., Jarquin, D., Cotes, J. M., Viele, K., Liu, G. and Cornelius, P. L. (2011). Bayesian estimation of the additive main effects and multiplicative interaction model. *Crop Science*, 51(4), 1458--1469. doi:10.2135/cropsci2010.06.0343
+
+Hoff, P. D. (2009). Simulation of the matrix Bingham-von Mises-Fisher distribution, with applications to multivariate and relational data. *Journal of Computational and Graphical Statistics*, 18(2), 438--456.
+
+Wood, A. T. A. (1994). Simulation of the von Mises Fisher distribution. *Communications in Statistics - Simulation and Computation*, 23(1), 157--164.
+
+Best, D. J. and Fisher, N. I. (1979). Efficient simulation of the von Mises distribution. *Journal of the Royal Statistical Society C (Applied Statistics)*, 28(2), 152--157.

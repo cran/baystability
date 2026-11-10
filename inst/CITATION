@@ -1,14 +1,70 @@
+# The version and year follow the installed package (from DESCRIPTION). The package was first released in 2018.
+first <- "2018"
+ver  <- if (!is.null(meta$Version)) meta$Version else utils::packageVersion("baystability")
+date <- if (!is.null(meta$Date)) meta$Date else if (!is.null(meta$`Date/Publication`)) meta$`Date/Publication` else
+  as.character(Sys.Date())
+year <- substr(date, 1L, 4L)
+note <- if (first == year) sprintf("R package version %s", ver) else
+  sprintf("R package version %s (first released %s)", ver, first)
+ttl  <- "baystability: Bayesian Stability Analysis of Genotype by Environment Interaction (GEI)"
+auth <- c(
+    person("Muhammad", "Yaseen", email = "myaseen208@gmail.com", comment = c(ORCID = "0000-0002-5923-1714"))
+  , person("Diego", "Jarquin")
+  , person("Sergio", "Perez-Elizalde")
+  , person("Juan", "Burgueno")
+  , person("Jose", "Crossa")
+  )
 bibentry(
-  "manual",
-  header = "Please, support this project by citing it in your publications!",
-  title = "baystability: Bayesian Stability Analysis of Genotype by Environment Interaction (GEI)",
-	author = c(
-	           person(c("Muhammad"), "Yaseen")
-	         , person(c("Diego"), "Jarquin")
-	         , person(c("Sergio"), "Perez-Elizalde")
-	         , person(c("Juan"), "Burgueño")
-	         , person(c("Jose"), "Crossa")
-	         ),
-  year = 2018,
-  journal = "The Comprehensive R Archive Network (CRAN)"
-)
+    bibtype     = "Manual"
+  , key         = "baystability"
+  , header      = "To cite baystability in publications use:"
+  , title       = "{baystability}: Bayesian Stability Analysis of Genotype by Environment Interaction ({GEI})"
+  , author      = auth
+  , year        = year
+  , note        = note
+  , url         = "https://CRAN.R-project.org/package=baystability"
+  , textVersion = sprintf(paste("Yaseen, M., Jarquin, D., Perez-Elizalde, S., Burgueno, J. and Crossa, J. (%s). %s.",
+                                "%s. https://CRAN.R-project.org/package=baystability"), year, ttl, note)
+  )
+bibentry(
+    bibtype     = "Article"
+  , key         = "PerezElizalde2012"
+  , header      = "and for the methods (bys_cite() gives the references of a single analysis):"
+  , title       = paste("A General {Bayesian} Estimation Method of Linear-Bilinear Models Applied to Plant",
+                      "Breeding Trials with Genotype x Environment Interaction")
+  , author      = c(person(c("Sergio"), "Perez-Elizalde"),
+                  person(c("Diego"), "Jarquin"),
+                  person(c("Jose"), "Crossa"))
+  , journal     = "Journal of Agricultural, Biological, and Environmental Statistics"
+  , year        = "2012"
+  , volume      = "17"
+  , number      = "1"
+  , pages       = "15--37"
+  , doi         = "10.1007/s13253-011-0063-9"
+  , textVersion = paste("Perez-Elizalde, S., Jarquin, D. and Crossa, J. (2012). A general Bayesian estimation",
+                      "method of linear-bilinear models applied to plant breeding trials with genotype x",
+                      "environment interaction. Journal of Agricultural, Biological, and Environmental",
+                      "Statistics, 17(1), 15-37. doi:10.1007/s13253-011-0063-9")
+  )
+bibentry(
+    bibtype     = "Article"
+  , key         = "Crossa2011"
+  , title       = "Bayesian Estimation of the Additive Main Effects and Multiplicative Interaction Model"
+  , author      = c(person(c("Jose"), "Crossa"),
+                  person(c("Sergio"), "Perez-Elizalde"),
+                  person(c("Diego"), "Jarquin"),
+                  person(c("Jose", "Miguel"), "Cotes"),
+                  person(c("Kert"), "Viele"),
+                  person(c("Genzhou"), "Liu"),
+                  person(c("Paul", "L."), "Cornelius"))
+  , journal     = "Crop Science"
+  , year        = "2011"
+  , volume      = "51"
+  , number      = "4"
+  , pages       = "1458--1469"
+  , doi         = "10.2135/cropsci2010.06.0343"
+  , textVersion = paste("Crossa, J., Perez-Elizalde, S., Jarquin, D., Cotes, J. M., Viele, K., Liu, G. and",
+                      "Cornelius, P. L. (2011). Bayesian estimation of the additive main effects and",
+                      "multiplicative interaction model. Crop Science, 51(4), 1458-1469.",
+                      "doi:10.2135/cropsci2010.06.0343")
+  )

@@ -1,0 +1,204 @@
+---
+title: "Getting started with baystability"
+author: "Muhammad Yaseen"
+date: last-modified
+format:
+  html:
+    self-contained: true
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    highlight-style: pygments
+    code-tools: true
+    html-math-method: mathjax
+vignette: >
+  %\VignetteIndexEntry{Getting started with baystability}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+{{< include _baystability-macros.txt >}}
+
+```{r setup, include = FALSE}
+# HTML figures are drawn as PNG and kept as WebP: lossless (the same pixels in about half the space of PNG), or
+# lossy at quality 90 when that is less than half the size, as for traces and densities of thousands of draws. The
+# PDF figures stay vector graphics. Any failure of magick (not installed, no WebP, or a broken installation whose
+# system libraries are missing) keeps the PNG
+webp <- function(path) {
+  if (knitr::is_latex_output() || !grepl(pattern = "[.]png$", x = path)) return(path)
+  tryCatch(
+      {
+        if (!requireNamespace("magick", quietly = TRUE) || !isTRUE(magick::magick_config()$webp)) return(path)
+        img <- magick::image_read(path)
+        out <- sub(pattern = "[.]png$", replacement = ".webp", x = path)
+        tmp <- tempfile(fileext = ".webp")
+        magick::image_write(
+            image   = img
+          , path    = out
+          , format  = "webp"
+          , quality = 100
+          , defines = c(`webp:lossless` = "true")
+          )
+        magick::image_write(image = img, path = tmp, format = "webp", quality = 90)
+        if (file.size(tmp) < file.size(out) / 2) file.copy(from = tmp, to = out, overwrite = TRUE)
+        unlink(c(path, tmp))
+        out
+      }
+    , error = function(e) path
+    )
+}
+knitr::opts_chunk$set(collapse = FALSE, comment = "", fig.width = 7, fig.height = 4.2,
+                      dev = if (knitr::is_latex_output()) "cairo_pdf" else "ragg_png", dpi = 96,
+                      fig.process = webp)
+if (requireNamespace("baystability", quietly = TRUE)) library(baystability) else
+  pkgload::load_all(export_all = FALSE, helpers = FALSE, quiet = TRUE)
+```
+
+# Abstract
+
+**baystability** fits the linear-bilinear models of a multi-environment trial, AMMI and SREG (GGE), by the general
+Bayesian method of Perez-Elizalde et al. (2012). Its distinctive feature is that the data of an earlier trial can be
+the prior. This vignette analyses the second year of a maize trial with the first year as prior, from the data to
+the biplot with highest posterior density (HPD) regions and a written interpretation.
+
+# The data
+
+`cultivo2008` and `cultivo2009` hold the grain yield (kg/ha) of 12 maize hybrids in the same 25 environments in two
+consecutive years, three replicates per environment.
+
+```{r data}
+data(cultivo2008)
+data(cultivo2009)
+str(cultivo2009)
+m08 <-
+  bys_ls_means(
+      .data = cultivo2008
+    , .y    = y
+    , .gen  = entry
+    , .env  = site
+    )
+m09 <-
+  bys_ls_means(
+      .data = cultivo2009
+    , .y    = y
+    , .gen  = entry
+    , .env  = site
+    )
+c(year_2008 = m08$grand_mean, year_2009 = m09$grand_mean)
+```
+
+# The least-squares AMMI fit of the second year
+
+```{r ls}
+ls09 <-
+  bys_ls_ammi(
+      .data = cultivo2009
+    , .y    = y
+    , .gen  = entry
+    , .env  = site
+    , .rep  = rep
+    )
+round(ls09$lambdas)
+```
+
+# The Bayesian fit with the first year as prior
+
+`.prior_data` makes the first year the prior. Its cell means, effects and singular value decomposition become the
+prior means, and its replicates set the prior's weight. All 11 bilinear terms are fitted, as in the paper.
+
+```{r fit}
+fm <-
+  bayes_ammi(
+      .data       = cultivo2009
+    , .y          = y
+    , .gen        = entry
+    , .env        = site
+    , .rep        = rep
+    , .nIter      = 3000
+    , .prior_data = cultivo2008
+    , .n0         = NULL
+    , .model      = "AMMI"
+    , .k          = NULL
+    , .burnin     = 1000
+    , .thin       = 1
+    , .chains     = 2
+    , .priors     = bys_priors(
+          mu_mean     = 0
+        , mu_var      = 1e+8
+        , tau_mean    = 0
+        , tau_var     = 1e+8
+        , delta_mean  = 0
+        , delta_var   = 1e+8
+        , lambda_mean = 0
+        , lambda_var  = 1e+8
+        , nu          = 1
+        , s2          = NULL
+        )
+    , .level      = 0.95
+    , .seed       = 2012
+    , .align      = TRUE
+    , .waic       = TRUE
+    )
+fm
+```
+
+```{r facts, include = FALSE}
+s <- fm$summary
+mu_post <- s[parameter == "mu", mean]
+```
+
+The posterior mean of the overall mean, `r round(mu_post)`, lies between the two yearly means
+(`r round(m08$grand_mean)` and `r round(m09$grand_mean)`). The prior counts as much as the data, because both years have
+three replicates.
+
+```{r trace, fig.height = 5.5}
+plot(x = fm, which = "trace", pars = c("mu", "sigma2", "lambda[1]", "lambda[2]"))
+```
+
+# The biplot with HPD regions
+
+```{r biplot, fig.width = 9, fig.height = 5.5}
+bp <-
+  bayes_ammi_biplot(
+      fit           = fm
+    , burnin        = 0
+    , thin          = 1
+    , pb            = c(0.10, 0.05)
+    , plot_stable   = FALSE
+    , plot_unstable = TRUE
+    , ncolors       = 5
+    , .which        = "both"
+    , .grid         = 100
+    )
+bp$biplot
+```
+
+Only genotypes and environments whose HPD region excludes the origin are drawn with their regions: they interact
+significantly on the first two terms.
+
+# Interpretation
+
+```{r int}
+bys_interpret(
+    x             = fm
+  , higher_better = TRUE
+  , top           = 5
+  )
+```
+
+# Where to go next
+
+* Vignette 2 gives the model, the priors from an earlier trial and the sampler.
+* Vignette 3 reproduces the published analysis of these data.
+* Vignette 4 fits the SREG (GGE) model and chooses the number of terms.
+* Vignette 5 lists the corrections to version 0.2.0 and the checks of the sampler.
+
+# References
+
+Perez-Elizalde, S., Jarquin, D. and Crossa, J. (2012). A general Bayesian estimation method of linear-bilinear models applied to plant breeding trials with genotype x environment interaction. *Journal of Agricultural, Biological, and Environmental Statistics*, 17, 15--37. doi:10.1007/s13253-011-0063-9
+
+Crossa, J., Perez-Elizalde, S., Jarquin, D., Cotes, J. M., Viele, K., Liu, G. and Cornelius, P. L. (2011). Bayesian estimation of the additive main effects and multiplicative interaction model. *Crop Science*, 51(4), 1458--1469. doi:10.2135/cropsci2010.06.0343
